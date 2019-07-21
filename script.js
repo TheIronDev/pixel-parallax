@@ -35,12 +35,21 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
-  draw() {
-    const {height, width} = this.ctx.canvas;
+  draw(width, height) {
+    this.ctx.lineWidth = this.size;
+
+    height = height/2;
+    width = width/2;
 
     const x = (width / this.xMax) * this.xStep;
     const y = (height / this.yMax) * this.yStep;
-    this.ctx.fillRect(x, y, this.size, this.size);
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, y);
+    this.ctx.lineTo(x + 18 * (width / this.xMax), y);
+
+    this.ctx.moveTo(x + 5 * (width / this.xMax), y - (height / this.yMax));
+    this.ctx.lineTo(x + 9 * (width / this.xMax), y - (height / this.yMax));
+    this.ctx.stroke();
   }
 
   reset() {
@@ -48,46 +57,79 @@ class Cloud extends RenderObject {
   }
 }
 
-function animateClouds() {
-  ctx.fillStyle = '#fff';
-  clouds.forEach(cloud => cloud.move());
-  clouds.forEach(cloud => cloud.draw());
-}
+class App {
+  constructor(window, ctx, clouds) {
+    this.window = window;
+    this.ctx = ctx;
+    this.clouds = clouds;
 
-function loop() {
-  requestAnimationFrame(loop);
-  ctx.clearRect(0,0, ctx.canvas.width, ctx.canvas.height);
-  animateClouds();
+    this.height = 0;
+    this.width = 0;
+  }
+
+  drawClouds_() {
+    this.ctx.fillStyle = '#fff';
+    this.ctx.strokeStyle = '#fff';
+    this.ctx.lineCap = 'round';
+    this.clouds.forEach(cloud => {
+      cloud.move();
+      cloud.draw(this.width, this.height);
+    });
+  }
+
+  clearCtx() {
+    this.ctx.clearRect(0,0, this.ctx.canvas.width, this.ctx.canvas.height);
+  }
+
+  draw() {
+    this.clearCtx();
+    this.drawClouds_();
+  }
+
+  renderLoop() {
+    this.window.requestAnimationFrame(() => this.renderLoop());
+    this.draw();
+  }
+
+  resize() {
+    const {innerHeight, innerWidth, devicePixelRatio} = this.window;
+    this.height = innerHeight;
+    this.width = innerWidth;
+
+    this.ctx.canvas.height = innerHeight * devicePixelRatio;
+    this.ctx.canvas.width = innerWidth * devicePixelRatio;
+    this.ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+
+  start() {
+    this.resize();
+    this.window.addEventListener('resize', () => this.resize());
+    this.renderLoop();
+  }
 }
 
 function initClouds(ctx, count) {
+  const clouds = [];
   while (count--) {
-    const xMax = 100;
-    const x = ~~(Math.random() * 20);
+    const xMax = 1000;
+    const x = ~~(Math.random() * xMax);
 
     const yMax = 100;
     const y = Math.random() * yMax/2;
 
-    const size = 5 + Math.random() * 15;
-    clouds.push(new Cloud(ctx, xMax + x, ~~y, xMax, yMax, ~~size, .5));
+    const size = 10 + Math.random() * 10;
+    const speed = Math.random() * 3;
+    clouds.push(new Cloud(ctx, xMax + ~~(x /2), ~~y, xMax, yMax, ~~size, ~~speed + 1));
   }
+  return clouds;
 }
 
-function resizeCanvas(ctx, window) {
-  const {innerHeight, innerWidth} = window;
-  ctx.canvas.height = innerHeight;
-  ctx.canvas.width = innerWidth;
-}
-
-let clouds = [];
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const clouds = initClouds(ctx, 10);
 
-function start() {
-  resizeCanvas(ctx, window);
-  initClouds(ctx, 5);
+// Create our "app"
+const app = new App(window, ctx, clouds);
 
-  requestAnimationFrame(loop);
-}
-
-start(window);
+// Start the render loop
+app.start();
