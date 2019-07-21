@@ -77,6 +77,12 @@ class App {
     });
   }
 
+  drawGround_() {
+    this.ctx.fillStyle = '#2d7229';
+    this.ctx.beginPath();
+    this.ctx.fillRect(0, this.height / 3, this.width, this.height);
+  }
+
   clearCtx() {
     this.ctx.clearRect(0,0, this.ctx.canvas.width, this.ctx.canvas.height);
   }
@@ -84,6 +90,7 @@ class App {
   draw() {
     this.clearCtx();
     this.drawClouds_();
+    this.drawGround_();
   }
 
   renderLoop() {
