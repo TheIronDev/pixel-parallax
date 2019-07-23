@@ -18,9 +18,6 @@ class RenderObject {
   }
 
   /** @abstract */
-  draw() {}
-
-  /** @abstract */
   reset() {}
 
   /** @abstract */
@@ -48,7 +45,7 @@ class Cloud extends RenderObject {
     const x = ~~(Math.random() * xMax);
 
     const yMax = 100;
-    const y = Math.random() * yMax/2;
+    const y = Math.random() * yMax / 2;
 
     const size = 10 + Math.random() * 10;
     const speed = Math.random() * 2;
@@ -69,17 +66,25 @@ class Building extends RenderObject {
     this.xStep = this.xMax;
   }
 
-  static generate(count) {
+  setRandomSeed() {
+    this.seed = ~~(Math.random() * 15) + 20;
+  }
+
+  static generate(index) {
     const xMax = 1000;
-    const x = count * 100;
+    const x = 50 * index;
 
     const yMax = 100;
     const y = Math.random() * yMax/2;
 
-    const size = 50 + ~~(Math.random() * 100);
-    return new Building(xMax + ~~(x /2), ~~y, xMax, yMax, ~~size, 1/4);
+    const size = 10 + ~~(Math.random() * 150);
+    const building = new Building(xMax + ~~(x /2), ~~y, xMax, yMax, ~~size, 1/4);
+    building.setRandomSeed();
+    return building;
   }
 }
+
+Building.MAX_SEED = 35;
 
 class Renderer {
   constructor(ctx) {
@@ -95,10 +100,62 @@ class Renderer {
 
   drawBuildings(buildings) {
     this.ctx.fillStyle = '#666';
-    buildings.forEach(building => {
+    buildings.forEach((building, index) => {
       building.move();
-      this.drawBuilding(building);
+      this.drawBuilding(building, index);
     });
+  }
+
+  drawBuildingSide(building, buildingBase, buildingWidth, width) {
+    const x = (width / building.xMax) * building.xStep;
+
+    this.ctx.beginPath();
+    this.ctx.fillRect(x, buildingBase, buildingWidth, building.size * -1);
+
+    // top
+    this.ctx.fillRect(x + 2.5, buildingBase - building.size, buildingWidth -5, -3);
+
+    // tippy top
+    this.ctx.fillRect(x + 5, buildingBase - building.size, buildingWidth -10, -6);
+
+    this.ctx.arc(x + buildingWidth/2, buildingBase - building.size - 5, 5, 0, Math.PI * 2);
+    if (building.size > 100) {
+      this.ctx.fillRect(x + buildingWidth/2 - 2, buildingBase - building.size, 4, -15);
+    } else if (building.size > 50) {
+      this.ctx.arc(x + buildingWidth/2, buildingBase - building.size - 5, 5, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+
+  drawBuildingWindows(building, buildingBase, buildingWidth, width) {
+    this.ctx.fillStyle = '#fff';
+    const x = (width / building.xMax) * building.xStep;
+
+    // skyscrapers windows
+    if (building.size > 100) {
+      for (let i = 0; i < building.size/5 - 1; i ++) {
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(x, buildingBase - 2.5 - (i * 5), buildingWidth, -2.5);
+      }
+      if ( building.size > 150) {
+        this.ctx.fillStyle = '#1b96ff';
+        this.ctx.fillRect(x + 2.5, buildingBase - building.size + 5, 10, 10);
+        this.ctx.fillRect(x + 17.5, buildingBase - building.size + 5, 3, 10);
+      }
+      return;
+    }
+
+    const seed = building.seed;
+    for (let i = 0; i < building.size/5 - 1; i ++) {
+      this.ctx.fillStyle = (i+1)%seed === 0 ? 'transparent' : '#FFE9F0';
+      this.ctx.fillRect(x + 2.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      this.ctx.fillStyle = (i + 2)%seed === 0 ? 'transparent' : '#FFE9F0';
+      this.ctx.fillRect(x + 7.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      this.ctx.fillStyle = (i + 3)%seed === 0 ? 'transparent' : '#FFE9F0';
+      this.ctx.fillRect(x + 12.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      this.ctx.fillStyle = (i + 4)%seed === 0 ? 'transparent' : '#FFE9F0';
+      this.ctx.fillRect(x + 17.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+    }
   }
 
   drawBuilding(building) {
@@ -106,14 +163,26 @@ class Renderer {
 
     const x = (width / building.xMax) * building.xStep;
     const buildingBase = this.height / 3;
-    this.ctx.fillStyle = '#555';
+    const buildingWidth = 22.5;
+
+    this.ctx.fillStyle = '#999';
+
+    // Draw the entire building structure
+    this.drawBuildingSide(building, buildingBase, buildingWidth, width);
+
+    this.ctx.save();
+
+    // Section off the right side of the building
     this.ctx.beginPath();
-    this.ctx.fillRect(x, buildingBase, 20, building.size * -1);
-    this.ctx.fillStyle = '#fff';
-    for (let i = 0; i < building.size/10 - 1; i ++) {
-      this.ctx.fillRect(x + 2.5, buildingBase - 2.5 - (i * 10), 5, -5);
-      this.ctx.fillRect(x + 12.5, buildingBase - 2.5 - (i * 10), 5, -5);
-    }
+    this.ctx.rect(x + buildingWidth * 2/3, buildingBase, buildingWidth, building.size * -2);
+    this.ctx.clip();
+    this.ctx.fillStyle = '#666';
+
+    // Draw the entire building structure
+    this.drawBuildingSide(building, buildingBase, buildingWidth, width);
+    this.ctx.restore();
+
+    this.drawBuildingWindows(building, buildingBase, buildingWidth, width);
   }
 
   drawClouds(clouds) {
@@ -210,8 +279,10 @@ function initClouds(ctx, count) {
 
 function initBuildings(ctx, count) {
   const buildings = [];
-  while (count--) {
-    buildings.push(Building.generate(count));
+  let i = 0;
+  for (let i = 0; i <= count/2; i++) {
+    buildings.push(Building.generate(i));
+    if (i !== count -i) buildings.push(Building.generate(count - i));
   }
   return buildings;
 }
