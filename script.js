@@ -15,12 +15,19 @@ class RenderObject {
     this.yMax = yMax;
     this.size = size;
     this.speed = speed;
+    this.tick = 0;
 
     this.setRandomSeed();
   }
 
-  /** @abstract */
-  animate() {}
+  getMaxTick() {
+    return 100;
+  }
+
+  update() {
+    this.tick++;
+    if (this.tick >= this.getMaxTick()) this.tick = 0;
+  }
 
   /** @abstract */
   reset() {}
@@ -34,12 +41,13 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
-  animate() {
+  update() {
     this.xStep -= this.speed;
 
     if ((this.xStep + this.size) < 0) {
       this.reset();
     }
+    super.update();
   }
 
   reset() {
@@ -77,6 +85,44 @@ class Building extends RenderObject {
   }
 }
 
+class Sky extends RenderObject {
+  getColor() {
+    const time = this.getTime();
+    const tick = this.getTick();
+    if (time < 6) {
+      return `rgb(50, 50, 50)`;
+    }
+    if (time < 8) {
+      const diff = ((tick - 600)/200);
+      const r = diff * (92 - 50) + 50;
+      const g = diff * (203 - 50) + 50;
+      const b = diff * (255 - 50) + 50;
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    if (time < 18) {
+      return `rgb(92, 203, 255)`;
+    }
+
+    // 92, 1800... 92 - 0
+    // 50, 2400... 92 - 42 * 1
+    const diff = ((tick-1800)/600);
+    const r = 92 - diff * (92 - 50);
+    const g = 203 - diff * (203 - 50);
+    const b = 255 - diff * (255 - 50);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  getMaxTick() {
+    return 2400;
+  }
+  getTick() {
+    return this.tick % 2400;
+  }
+  getTime() {
+    return ~~(this.getTick() / 100);
+  }
+}
+
 Building.MAX_SEED = 35;
 
 class Renderer {
@@ -96,7 +142,7 @@ class Renderer {
   drawBuildings(buildings) {
     this.ctx.fillStyle = '#666';
     buildings.forEach((building, index) => {
-      building.animate();
+      building.update();
       this.drawBuilding(building, index);
     });
   }
@@ -185,7 +231,7 @@ class Renderer {
     this.ctx.strokeStyle = '#fff';
     this.ctx.lineCap = 'round';
     clouds.forEach(cloud => {
-      cloud.animate();
+      cloud.update();
       this.drawCloud(cloud);
     });
   }
@@ -236,12 +282,18 @@ class Renderer {
     this.ctx.fillRect(0, this.height /3, this.width, this.height);
   }
 
-  draw(buildings, clouds) {
+  drawSky(sky) {
+    sky.update();
+    this.ctx.fillStyle = sky.getColor();
+    this.ctx.beginPath();
+    this.ctx.fillRect(0, 0, this.width, this.height / 3);
+  }
+
+  draw(buildings, clouds, sky) {
     this.clear();
+    this.drawSky(sky);
     this.drawClouds(clouds);
     this.drawBuildings(buildings);
-
-
     this.drawReflectiveWater();
     this.drawGround();
   }
@@ -263,18 +315,19 @@ class Renderer {
 }
 
 class App {
-  constructor(window, renderer, clouds, buildings) {
+  constructor(window, renderer, clouds, buildings, sky) {
     this.window = window;
     this.renderer = renderer;
     this.clouds = clouds;
     this.buildings = buildings;
+    this.sky = sky;
 
     this.height = 0;
     this.width = 0;
   }
 
   draw() {
-    this.renderer.draw(this.buildings, this.clouds);
+    this.renderer.draw(this.buildings, this.clouds, this.sky);
   }
 
   renderLoop() {
@@ -294,7 +347,7 @@ class App {
   }
 }
 
-function initClouds(ctx, count) {
+function initClouds(count) {
   const clouds = [];
   while (count--) {
     clouds.push(Cloud.generate());
@@ -302,7 +355,7 @@ function initClouds(ctx, count) {
   return clouds;
 }
 
-function initBuildings(ctx, count) {
+function initBuildings(count) {
   const buildings = [];
   for (let i = 0; i <= count/2; i++) {
     buildings.push(Building.generate(i));
@@ -315,13 +368,14 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tempCanvas = document.getElementById('tempCanvas');
 const tempCtx = tempCanvas.getContext('2d');
-const clouds = initClouds(ctx, 10);
-const buildings = initBuildings(ctx, 10);
+const clouds = initClouds(10);
+const buildings = initBuildings(10);
+const sky = new Sky();
 
 const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
-const app = new App(window, renderr, clouds, buildings);
+const app = new App(window, renderr, clouds, buildings, sky);
 
 // Start the render loop
 app.start();
