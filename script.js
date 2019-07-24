@@ -15,20 +15,26 @@ class RenderObject {
     this.yMax = yMax;
     this.size = size;
     this.speed = speed;
+
+    this.setRandomSeed();
   }
+
+  /** @abstract */
+  animate() {}
 
   /** @abstract */
   reset() {}
 
-  /** @abstract */
-  move() {}
+  setRandomSeed() {
+    this.seed = ~~(Math.random() * 15) + 1;
+  }
 
   /** @abstract */
   static generate() {}
 }
 
 class Cloud extends RenderObject {
-  move() {
+  animate() {
     this.xStep -= this.speed;
 
     if ((this.xStep + this.size) < 0) {
@@ -49,23 +55,11 @@ class Cloud extends RenderObject {
 
     const size = 10 + Math.random() * 10;
     const speed = Math.random() * 2;
-    return new Cloud(xMax + ~~(x /2), ~~y, xMax, yMax, ~~size, speed/3);
+    return new Cloud(~~(x), ~~y, xMax, yMax, ~~size, speed/3);
   }
 }
 
 class Building extends RenderObject {
-  move() {
-    this.xStep -= this.speed;
-
-    if ((this.xStep + 20) < 0) {
-      this.reset();
-    }
-  }
-
-  reset() {
-    this.xStep = this.xMax;
-  }
-
   setRandomSeed() {
     this.seed = ~~(Math.random() * 15) + 20;
   }
@@ -78,8 +72,7 @@ class Building extends RenderObject {
     const y = Math.random() * yMax/2;
 
     const size = 10 + ~~(Math.random() * 150);
-    const building = new Building(xMax/4 + ~~(x /2), ~~y, xMax, yMax, ~~size, 0);
-    building.setRandomSeed();
+    const building = new Building(xMax/4 + ~~(x), ~~y, xMax, yMax, ~~size, 0);
     return building;
   }
 }
@@ -103,7 +96,7 @@ class Renderer {
   drawBuildings(buildings) {
     this.ctx.fillStyle = '#666';
     buildings.forEach((building, index) => {
-      building.move();
+      building.animate();
       this.drawBuilding(building, index);
     });
   }
@@ -192,7 +185,7 @@ class Renderer {
     this.ctx.strokeStyle = '#fff';
     this.ctx.lineCap = 'round';
     clouds.forEach(cloud => {
-      cloud.move();
+      cloud.animate();
       this.drawCloud(cloud);
     });
   }
