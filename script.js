@@ -78,7 +78,7 @@ class Building extends RenderObject {
     const y = Math.random() * yMax/2;
 
     const size = 10 + ~~(Math.random() * 150);
-    const building = new Building(xMax + ~~(x /2), ~~y, xMax, yMax, ~~size, 1/4);
+    const building = new Building(xMax/4 + ~~(x /2), ~~y, xMax, yMax, ~~size, 0);
     building.setRandomSeed();
     return building;
   }
@@ -87,8 +87,9 @@ class Building extends RenderObject {
 Building.MAX_SEED = 35;
 
 class Renderer {
-  constructor(ctx) {
+  constructor(ctx, tempCtx) {
     this.ctx = ctx;
+    this.tempCtx = tempCtx;
     this.height = 0;
     this.width = 0;
     this.devicePixelRatio = 1;
@@ -96,6 +97,7 @@ class Renderer {
 
   clear() {
     this.ctx.clearRect(0,0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.tempCtx.clearRect(0,0, this.ctx.canvas.width, this.ctx.canvas.height);
   }
 
   drawBuildings(buildings) {
@@ -215,13 +217,39 @@ class Renderer {
   drawGround() {
     this.ctx.fillStyle = '#2d7229';
     this.ctx.beginPath();
-    this.ctx.fillRect(0, this.height / 3, this.width, this.height);
+    this.ctx.fillRect(0, this.height/3, this.width, 10);
+    this.ctx.fillRect(0, this.height/2, this.width, -20);
+  }
+
+  drawReflectiveWater() {
+    this.tempCtx.drawImage(this.ctx.canvas, 0, 0, this.width, this.height);
+    this.ctx.save();
+
+    this.ctx.scale(1, -1);
+    this.ctx.translate(0, -this.height * 2/3);
+    this.ctx.drawImage(this.tempCtx.canvas, 0, 0, this.width, this.height);
+    this.ctx.restore();
+
+    this.ctx.fillStyle = 'rgba(0,0,255,.4)';
+
+    var gradient = ctx.createLinearGradient(0, this.height / 3, 0, this.height /2);
+
+    gradient.addColorStop(0, 'rgba(0,0,255,.4)');
+    gradient.addColorStop(.5, 'rgba(200,200,255,.8)');
+    gradient.addColorStop(.7, 'rgba(200,200,255,.8)');
+    gradient.addColorStop(1, 'rgba(200,200,255,1)');
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, this.height /3, this.width, this.height);
   }
 
   draw(buildings, clouds) {
     this.clear();
     this.drawClouds(clouds);
     this.drawBuildings(buildings);
+
+
+    this.drawReflectiveWater();
     this.drawGround();
   }
 
@@ -234,6 +262,10 @@ class Renderer {
     this.ctx.canvas.height = innerHeight * devicePixelRatio;
     this.ctx.canvas.width = innerWidth * devicePixelRatio;
     this.ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    this.tempCtx.canvas.height = innerHeight * devicePixelRatio;
+    this.tempCtx.canvas.width = innerWidth * devicePixelRatio;
+    this.tempCtx.scale(devicePixelRatio, devicePixelRatio);
   }
 }
 
@@ -279,7 +311,6 @@ function initClouds(ctx, count) {
 
 function initBuildings(ctx, count) {
   const buildings = [];
-  let i = 0;
   for (let i = 0; i <= count/2; i++) {
     buildings.push(Building.generate(i));
     if (i !== count -i) buildings.push(Building.generate(count - i));
@@ -289,10 +320,12 @@ function initBuildings(ctx, count) {
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const tempCanvas = document.getElementById('tempCanvas');
+const tempCtx = tempCanvas.getContext('2d');
 const clouds = initClouds(ctx, 10);
 const buildings = initBuildings(ctx, 10);
 
-const renderr = new Renderer(ctx);
+const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
 const app = new App(window, renderr, clouds, buildings);
