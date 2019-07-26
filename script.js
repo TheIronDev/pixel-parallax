@@ -40,6 +40,19 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
+  render(ctx) {
+    ctx.lineWidth = this.size;
+
+    const x = this.x;
+    const y = this.y;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 18, y);
+
+    ctx.moveTo(x + 5, y - this.size/2);
+    ctx.lineTo(x + 9, y - this.size/2);
+    ctx.stroke();
+  }
 
   reset() {
     this.xStep = this.xMax + this.size;
@@ -68,6 +81,83 @@ class Cloud extends RenderObject {
 }
 
 class Building extends RenderObject {
+  renderBuildingSide(ctx, buildingBase, buildingWidth) {
+    const x = this.x;
+
+    ctx.beginPath();
+    ctx.fillRect(x, buildingBase, buildingWidth, this.size * -1);
+
+    // top
+    ctx.fillRect(x + 2.5, buildingBase - this.size, buildingWidth -5, -3);
+
+    // tippy top
+    ctx.fillRect(x + 5, buildingBase - this.size, buildingWidth -10, -6);
+
+    ctx.arc(x + buildingWidth/2, buildingBase - this.size - 5, 5, 0, Math.PI * 2);
+    if (this.size > 100) {
+      ctx.fillRect(x + buildingWidth/2 - 2, buildingBase - this.size, 4, -15);
+    } else if (this.size > 50) {
+      ctx.arc(x + buildingWidth/2, buildingBase - this.size - 5, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  renderBuildingWindows(ctx, buildingBase, buildingWidth, width) {
+    ctx.fillStyle = '#fff';
+    const x = this.x;
+
+    // skyscrapers windows
+    if (this.size > 100) {
+      for (let i = 0; i < this.size/5 - 1; i ++) {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x, buildingBase - 2.5 - (i * 5), buildingWidth, -2.5);
+      }
+      if (this.size > 150) {
+        ctx.fillStyle = '#1b96ff';
+        ctx.fillRect(x + 2.5, buildingBase - this.size + 5, 10, 10);
+        ctx.fillRect(x + 17.5, buildingBase - this.size + 5, 3, 10);
+      }
+      return;
+    }
+
+    const seed = this.seed;
+    for (let i = 0; i < this.size/5 - 1; i ++) {
+      ctx.fillStyle = (i+1)%seed === 0 ? 'transparent' : '#FFE9F0';
+      ctx.fillRect(x + 2.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      ctx.fillStyle = (i + 2)%seed === 0 ? 'transparent' : '#FFE9F0';
+      ctx.fillRect(x + 7.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      ctx.fillStyle = (i + 3)%seed === 0 ? 'transparent' : '#FFE9F0';
+      ctx.fillRect(x + 12.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+      ctx.fillStyle = (i + 4)%seed === 0 ? 'transparent' : '#FFE9F0';
+      ctx.fillRect(x + 17.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+    }
+  }
+
+  render(ctx, width, height) {
+    const x = this.x;
+    const buildingBase = height / 3;
+    const buildingWidth = 22.5;
+
+    ctx.fillStyle = '#999';
+
+    // Draw the entire building structure
+    this.renderBuildingSide(ctx, buildingBase, buildingWidth, width);
+
+    ctx.save();
+
+    // Section off the right side of the building
+    ctx.beginPath();
+    ctx.rect(x + buildingWidth * 2/3, buildingBase, buildingWidth, this.size * -2);
+    ctx.clip();
+    ctx.fillStyle = '#666';
+
+    // Draw the entire building structure
+    this.renderBuildingSide(ctx, buildingBase, buildingWidth, width);
+    ctx.restore();
+
+    this.renderBuildingWindows(ctx, buildingBase, buildingWidth, width);
+  }
+
   setRandomSeed() {
     this.seed = ~~(Math.random() * 15) + 20;
   }
@@ -120,6 +210,45 @@ class Sky extends RenderObject {
   getTime() {
     return ~~(this.getTick() / 100);
   }
+  render(ctx, width, height) {
+    ctx.fillStyle = this.getColor();
+    ctx.beginPath();
+    ctx.fillRect(0, 0, width, height / 3);
+  }
+}
+
+class Lake extends RenderObject {
+  render(ctx, width, height, tempCtx) {
+    tempCtx.drawImage(ctx.canvas, 0, 0, width, height);
+    ctx.save();
+
+    ctx.scale(1, -1);
+    ctx.translate(0, -height * 2/3);
+    ctx.drawImage(tempCtx.canvas, 0, 0, width, height);
+    ctx.restore();
+
+    ctx.fillStyle = 'rgba(0,0,255,.4)';
+
+    var gradient = ctx.createLinearGradient(0, height / 3, 0, height /2);
+
+    gradient.addColorStop(0, 'rgba(0,0,255,.4)');
+    gradient.addColorStop(.5, 'rgba(200,200,255,.8)');
+    gradient.addColorStop(.7, 'rgba(200,200,255,.8)');
+    gradient.addColorStop(1, 'rgba(200,200,255,1)');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, height /3, width, height);
+
+  }
+}
+
+class Ground extends RenderObject {
+  render(ctx, width, height) {
+    ctx.fillStyle = '#2d7229';
+    ctx.beginPath();
+    ctx.fillRect(0, height/3, width, 10);
+    ctx.fillRect(0, height/2, width, -20);
+  }
 }
 
 Building.MAX_SEED = 35;
@@ -130,7 +259,6 @@ class Renderer {
     this.tempCtx = tempCtx;
     this.height = 0;
     this.width = 0;
-    this.devicePixelRatio = 1;
   }
 
   clear() {
@@ -140,89 +268,12 @@ class Renderer {
 
   drawBuildings(buildings) {
     this.ctx.fillStyle = '#666';
-    buildings.forEach((building, index) => {
+    let width = this.width;
+    let height = this.height;
+    buildings.forEach((building) => {
       building.update();
-      this.drawBuilding(building, index);
+      building.render(this.ctx, width, height);
     });
-  }
-
-  drawBuildingSide(building, buildingBase, buildingWidth) {
-    const x = building.x;
-
-    this.ctx.beginPath();
-    this.ctx.fillRect(x, buildingBase, buildingWidth, building.size * -1);
-
-    // top
-    this.ctx.fillRect(x + 2.5, buildingBase - building.size, buildingWidth -5, -3);
-
-    // tippy top
-    this.ctx.fillRect(x + 5, buildingBase - building.size, buildingWidth -10, -6);
-
-    this.ctx.arc(x + buildingWidth/2, buildingBase - building.size - 5, 5, 0, Math.PI * 2);
-    if (building.size > 100) {
-      this.ctx.fillRect(x + buildingWidth/2 - 2, buildingBase - building.size, 4, -15);
-    } else if (building.size > 50) {
-      this.ctx.arc(x + buildingWidth/2, buildingBase - building.size - 5, 5, 0, Math.PI * 2);
-      this.ctx.fill();
-    }
-  }
-
-  drawBuildingWindows(building, buildingBase, buildingWidth, width) {
-    this.ctx.fillStyle = '#fff';
-    const x = building.x;
-
-    // skyscrapers windows
-    if (building.size > 100) {
-      for (let i = 0; i < building.size/5 - 1; i ++) {
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillRect(x, buildingBase - 2.5 - (i * 5), buildingWidth, -2.5);
-      }
-      if ( building.size > 150) {
-        this.ctx.fillStyle = '#1b96ff';
-        this.ctx.fillRect(x + 2.5, buildingBase - building.size + 5, 10, 10);
-        this.ctx.fillRect(x + 17.5, buildingBase - building.size + 5, 3, 10);
-      }
-      return;
-    }
-
-    const seed = building.seed;
-    for (let i = 0; i < building.size/5 - 1; i ++) {
-      this.ctx.fillStyle = (i+1)%seed === 0 ? 'transparent' : '#FFE9F0';
-      this.ctx.fillRect(x + 2.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      this.ctx.fillStyle = (i + 2)%seed === 0 ? 'transparent' : '#FFE9F0';
-      this.ctx.fillRect(x + 7.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      this.ctx.fillStyle = (i + 3)%seed === 0 ? 'transparent' : '#FFE9F0';
-      this.ctx.fillRect(x + 12.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      this.ctx.fillStyle = (i + 4)%seed === 0 ? 'transparent' : '#FFE9F0';
-      this.ctx.fillRect(x + 17.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-    }
-  }
-
-  drawBuilding(building) {
-    let width = this.width/this.devicePixelRatio;
-
-    const x = building.x;
-    const buildingBase = this.height / 3;
-    const buildingWidth = 22.5;
-
-    this.ctx.fillStyle = '#999';
-
-    // Draw the entire building structure
-    this.drawBuildingSide(building, buildingBase, buildingWidth, width);
-
-    this.ctx.save();
-
-    // Section off the right side of the building
-    this.ctx.beginPath();
-    this.ctx.rect(x + buildingWidth * 2/3, buildingBase, buildingWidth, building.size * -2);
-    this.ctx.clip();
-    this.ctx.fillStyle = '#666';
-
-    // Draw the entire building structure
-    this.drawBuildingSide(building, buildingBase, buildingWidth, width);
-    this.ctx.restore();
-
-    this.drawBuildingWindows(building, buildingBase, buildingWidth, width);
   }
 
   drawClouds(clouds) {
@@ -231,74 +282,26 @@ class Renderer {
     this.ctx.lineCap = 'round';
     clouds.forEach(cloud => {
       cloud.update();
-      this.drawCloud(cloud);
+      cloud.render(this.ctx);
     });
   }
 
-  drawCloud(cloud) {
-    this.ctx.lineWidth = cloud.size;
-
-    const x = cloud.x;
-    const y = cloud.y;
-    this.ctx.beginPath();
-    this.ctx.moveTo(x, y);
-    this.ctx.lineTo(x + 18, y);
-
-    this.ctx.moveTo(x + 5, y - cloud.size/2);
-    this.ctx.lineTo(x + 9, y - cloud.size/2);
-    this.ctx.stroke();
-  }
-
-  drawGround() {
-    this.ctx.fillStyle = '#2d7229';
-    this.ctx.beginPath();
-    this.ctx.fillRect(0, this.height/3, this.width, 10);
-    this.ctx.fillRect(0, this.height/2, this.width, -20);
-  }
-
-  drawReflectiveWater() {
-    this.tempCtx.drawImage(this.ctx.canvas, 0, 0, this.width, this.height);
-    this.ctx.save();
-
-    this.ctx.scale(1, -1);
-    this.ctx.translate(0, -this.height * 2/3);
-    this.ctx.drawImage(this.tempCtx.canvas, 0, 0, this.width, this.height);
-    this.ctx.restore();
-
-    this.ctx.fillStyle = 'rgba(0,0,255,.4)';
-
-    var gradient = ctx.createLinearGradient(0, this.height / 3, 0, this.height /2);
-
-    gradient.addColorStop(0, 'rgba(0,0,255,.4)');
-    gradient.addColorStop(.5, 'rgba(200,200,255,.8)');
-    gradient.addColorStop(.7, 'rgba(200,200,255,.8)');
-    gradient.addColorStop(1, 'rgba(200,200,255,1)');
-
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, this.height /3, this.width, this.height);
-  }
-
-  drawSky(sky) {
-    sky.update();
-    this.ctx.fillStyle = sky.getColor();
-    this.ctx.beginPath();
-    this.ctx.fillRect(0, 0, this.width, this.height / 3);
-  }
-
-  draw(buildings, clouds, sky) {
+  draw(buildings, clouds, sky, lake, ground) {
     this.clear();
-    this.drawSky(sky);
+
+    sky.update();
+    sky.render(this.ctx, this.width, this.height);
+
     this.drawClouds(clouds);
     this.drawBuildings(buildings);
-    this.drawReflectiveWater();
-    this.drawGround();
+    lake.render(this.ctx, this.width, this.height, this.tempCtx);
+    ground.render(this.ctx, this.width, this.height);
   }
 
-  setDimentions(height, width, devicePixelRatio) {
+  setDimensions(height, width, devicePixelRatio) {
 
     this.height = height;
     this.width = width;
-    this.devicePixelRatio = devicePixelRatio;
 
     this.ctx.canvas.height = innerHeight * devicePixelRatio;
     this.ctx.canvas.width = innerWidth * devicePixelRatio;
@@ -311,19 +314,21 @@ class Renderer {
 }
 
 class App {
-  constructor(window, renderer, clouds, buildings, sky) {
+  constructor(window, renderer, clouds, buildings, sky, lake, ground) {
     this.window = window;
     this.renderer = renderer;
     this.clouds = clouds;
     this.buildings = buildings;
     this.sky = sky;
+    this.lake = lake;
+    this.ground = ground;
 
     this.height = 0;
     this.width = 0;
   }
 
   draw() {
-    this.renderer.draw(this.buildings, this.clouds, this.sky);
+    this.renderer.draw(this.buildings, this.clouds, this.sky, this.lake, this.ground);
   }
 
   renderLoop() {
@@ -333,7 +338,7 @@ class App {
 
   resize() {
     const {innerHeight, innerWidth, devicePixelRatio} = this.window;
-    this.renderer.setDimentions(innerHeight, innerWidth, devicePixelRatio);
+    this.renderer.setDimensions(innerHeight, innerWidth, devicePixelRatio);
   }
 
   start() {
@@ -367,11 +372,13 @@ const tempCtx = tempCanvas.getContext('2d');
 const clouds = initClouds(10);
 const buildings = initBuildings(10, ctx);
 const sky = new Sky();
+const ground = new Ground();
+const lake = new Lake();
 
 const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
-const app = new App(window, renderr, clouds, buildings, sky);
+const app = new App(window, renderr, clouds, buildings, sky, lake, ground);
 
 // Start the render loop
 app.start();
