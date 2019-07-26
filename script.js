@@ -25,6 +25,8 @@ class RenderObject {
     if (this.tick >= this.getMaxTick()) this.tick = 0;
   }
 
+  preRender(ctx, width, height) {}
+
   /** @abstract */
   render(ctx) {}
 
@@ -40,6 +42,12 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
+  preRender(ctx, width, height) {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#fff';
+    ctx.lineCap = 'round';
+  }
+
   render(ctx) {
     ctx.lineWidth = this.size;
 
@@ -81,6 +89,10 @@ class Cloud extends RenderObject {
 }
 
 class Building extends RenderObject {
+  preRender(ctx) {
+    ctx.fillStyle = '#666';
+  }
+
   renderBuildingSide(ctx, buildingBase, buildingWidth) {
     const x = this.x;
 
@@ -266,36 +278,14 @@ class Renderer {
     this.tempCtx.clearRect(0,0, this.ctx.canvas.width, this.ctx.canvas.height);
   }
 
-  drawBuildings(buildings) {
-    this.ctx.fillStyle = '#666';
-    let width = this.width;
-    let height = this.height;
-    buildings.forEach((building) => {
-      building.update();
-      building.render(this.ctx, width, height);
-    });
-  }
-
-  drawClouds(clouds) {
-    this.ctx.fillStyle = '#fff';
-    this.ctx.strokeStyle = '#fff';
-    this.ctx.lineCap = 'round';
-    clouds.forEach(cloud => {
-      cloud.update();
-      cloud.render(this.ctx);
-    });
-  }
-
-  draw(buildings, clouds, sky, lake, ground) {
+  draw(assets) {
     this.clear();
 
-    sky.update();
-    sky.render(this.ctx, this.width, this.height);
-
-    this.drawClouds(clouds);
-    this.drawBuildings(buildings);
-    lake.render(this.ctx, this.width, this.height, this.tempCtx);
-    ground.render(this.ctx, this.width, this.height);
+    assets.forEach((asset) => {
+      asset.update();
+      asset.preRender(this.ctx, this.width, this.height, this.tempCtx);
+      asset.render(this.ctx, this.width, this.height, this.tempCtx);
+    });
   }
 
   setDimensions(height, width, devicePixelRatio) {
@@ -314,21 +304,17 @@ class Renderer {
 }
 
 class App {
-  constructor(window, renderer, clouds, buildings, sky, lake, ground) {
+  constructor(window, renderer, assets) {
     this.window = window;
     this.renderer = renderer;
-    this.clouds = clouds;
-    this.buildings = buildings;
-    this.sky = sky;
-    this.lake = lake;
-    this.ground = ground;
+    this.assets = assets;
 
     this.height = 0;
     this.width = 0;
   }
 
   draw() {
-    this.renderer.draw(this.buildings, this.clouds, this.sky, this.lake, this.ground);
+    this.renderer.draw(this.assets);
   }
 
   renderLoop() {
@@ -375,10 +361,12 @@ const sky = new Sky();
 const ground = new Ground();
 const lake = new Lake();
 
+const assets = [sky, ...clouds, ...buildings, lake, ground];
+
 const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
-const app = new App(window, renderr, clouds, buildings, sky, lake, ground);
+const app = new App(window, renderr, assets);
 
 // Start the render loop
 app.start();
