@@ -1,18 +1,14 @@
 
 class RenderObject {
   /**
-   * @param {number} xStep
-   * @param {number} yStep
-   * @param {number} xMax
-   * @param {number} yMax
+   * @param {number} x
+   * @param {number} y
    * @param {number} size
    * @param {number} speed
    */
-  constructor(xStep, yStep, xMax, yMax, size, speed) {
-    this.xStep = xStep;
-    this.yStep = yStep;
-    this.xMax = xMax;
-    this.yMax = yMax;
+  constructor(x = 0, y = 0, size = 1, speed = 1) {
+    this.x = x;
+    this.y = y;
     this.size = size;
     this.speed = speed;
     this.tick = 0;
@@ -30,6 +26,9 @@ class RenderObject {
   }
 
   /** @abstract */
+  render(ctx) {}
+
+  /** @abstract */
   reset() {}
 
   setRandomSeed() {
@@ -41,29 +40,30 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
-  update() {
-    this.xStep -= this.speed;
-
-    if ((this.xStep + this.size) < 0) {
-      this.reset();
-    }
-    super.update();
-  }
 
   reset() {
     this.xStep = this.xMax + this.size;
+  }
+
+  update() {
+    this.x -= this.speed;
+
+    if ((this.x + this.size) < 0) {
+      this.reset();
+    }
+    super.update();
   }
 
   static generate() {
     const xMax = 1000;
     const x = ~~(Math.random() * xMax);
 
-    const yMax = 100;
+    const yMax = 200;
     const y = Math.random() * yMax / 2;
 
     const size = 10 + Math.random() * 10;
     const speed = Math.random() * 2;
-    return new Cloud(~~(x), ~~y, xMax, yMax, ~~size, speed/3);
+    return new Cloud(~~(x), ~~y, ~~size, speed/3);
   }
 }
 
@@ -72,18 +72,17 @@ class Building extends RenderObject {
     this.seed = ~~(Math.random() * 15) + 20;
   }
 
-  static generate(index) {
-    const xMax = 1000;
-    const x = 50 * index;
+  static generate(index, width) {
+    const x = this.BUILDING_WIDTH * index;
 
     const yMax = 100;
     const y = Math.random() * yMax/2;
 
     const size = 10 + ~~(Math.random() * 150);
-    const building = new Building(xMax/4 + ~~(x), ~~y, xMax, yMax, ~~size, 0);
-    return building;
+    return new Building(~~(x), ~~y, ~~size, 0);
   }
 }
+Building.BUILDING_WIDTH = 22.5;
 
 class Sky extends RenderObject {
   getColor() {
@@ -147,8 +146,8 @@ class Renderer {
     });
   }
 
-  drawBuildingSide(building, buildingBase, buildingWidth, width) {
-    const x = (width / building.xMax) * building.xStep;
+  drawBuildingSide(building, buildingBase, buildingWidth) {
+    const x = building.x;
 
     this.ctx.beginPath();
     this.ctx.fillRect(x, buildingBase, buildingWidth, building.size * -1);
@@ -170,7 +169,7 @@ class Renderer {
 
   drawBuildingWindows(building, buildingBase, buildingWidth, width) {
     this.ctx.fillStyle = '#fff';
-    const x = (width / building.xMax) * building.xStep;
+    const x = building.x;
 
     // skyscrapers windows
     if (building.size > 100) {
@@ -202,7 +201,7 @@ class Renderer {
   drawBuilding(building) {
     let width = this.width/this.devicePixelRatio;
 
-    const x = (width / building.xMax) * building.xStep;
+    const x = building.x;
     const buildingBase = this.height / 3;
     const buildingWidth = 22.5;
 
@@ -239,17 +238,14 @@ class Renderer {
   drawCloud(cloud) {
     this.ctx.lineWidth = cloud.size;
 
-    let height = this.height/this.devicePixelRatio;
-    let width = this.width/this.devicePixelRatio;
-
-    const x = (width / cloud.xMax) * cloud.xStep;
-    const y = (height / cloud.yMax) * cloud.yStep;
+    const x = cloud.x;
+    const y = cloud.y;
     this.ctx.beginPath();
     this.ctx.moveTo(x, y);
-    this.ctx.lineTo(x + 18 * (width / cloud.xMax), y);
+    this.ctx.lineTo(x + 18, y);
 
-    this.ctx.moveTo(x + 5 * (width / cloud.xMax), y - (height / cloud.yMax));
-    this.ctx.lineTo(x + 9 * (width / cloud.xMax), y - (height / cloud.yMax));
+    this.ctx.moveTo(x + 5, y - cloud.size/2);
+    this.ctx.lineTo(x + 9, y - cloud.size/2);
     this.ctx.stroke();
   }
 
@@ -355,11 +351,11 @@ function initClouds(count) {
   return clouds;
 }
 
-function initBuildings(count) {
+function initBuildings(count, ctx) {
   const buildings = [];
   for (let i = 0; i <= count/2; i++) {
     buildings.push(Building.generate(i));
-    if (i !== count -i) buildings.push(Building.generate(count - i));
+    if (i !== count -i) buildings.push(Building.generate(count - i, ctx.canvas.width));
   }
   return buildings;
 }
@@ -369,7 +365,7 @@ const ctx = canvas.getContext('2d');
 const tempCanvas = document.getElementById('tempCanvas');
 const tempCtx = tempCanvas.getContext('2d');
 const clouds = initClouds(10);
-const buildings = initBuildings(10);
+const buildings = initBuildings(10, ctx);
 const sky = new Sky();
 
 const renderr = new Renderer(ctx, tempCtx);
