@@ -79,12 +79,11 @@ class Cloud extends RenderObject {
     super.update();
   }
 
-  static generate() {
-    const xMax = 1000;
+  static generate(width, height) {
+    const xMax = width * 2;
     const x = ~~(Math.random() * xMax);
 
-    const yMax = 200;
-    const y = Math.random() * yMax / 2;
+    const y = Math.random() * height;
 
     const size = 10 + Math.random() * 10;
     const speed = 1 + ~~(Math.random() * 2);
@@ -226,26 +225,26 @@ class Sky extends RenderObject {
   getTime() {
     return ~~(this.getTick() / 100);
   }
-  render({ctx, width, height}) {
+  render({ctx, width, height, skyline}) {
     ctx.fillStyle = this.getColor();
     ctx.beginPath();
-    ctx.fillRect(0, 0, width, height / 3);
+    ctx.fillRect(0, 0, width, skyline);
   }
 }
 
 class Lake extends RenderObject {
   render({ctx, width, height, tempCtx, skyline}) {
-    tempCtx.drawImage(ctx.canvas, 0, 0, width, height);
+    tempCtx.drawImage(ctx.canvas, 0, 0, width, skyline);
     ctx.save();
 
     ctx.scale(1, -1);
-    ctx.translate(0, -height * 2/3);
-    ctx.drawImage(tempCtx.canvas, 0, 0, width, height);
+    ctx.translate(0, -height);
+    ctx.drawImage(tempCtx.canvas, 0, 0, width, skyline);
     ctx.restore();
 
     ctx.fillStyle = 'rgba(0,0,255,.4)';
 
-    var gradient = ctx.createLinearGradient(0, height / 3, 0, height /2);
+    var gradient = ctx.createLinearGradient(0, skyline, 0, height);
 
     gradient.addColorStop(0, 'rgba(0,0,255,.4)');
     gradient.addColorStop(.5, 'rgba(200,200,255,.8)');
@@ -253,16 +252,16 @@ class Lake extends RenderObject {
     gradient.addColorStop(1, 'rgba(200,200,255,1)');
 
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, height /3, width, height);
+    ctx.fillRect(0, skyline, width, height);
   }
 }
 
 class Ground extends RenderObject {
-  render({ctx, width, height}) {
+  render({ctx, width, height, skyline}) {
     ctx.fillStyle = '#2d7229';
     ctx.beginPath();
-    ctx.fillRect(0, height/3, width, 10);
-    ctx.fillRect(0, height/2, width, -20);
+    ctx.fillRect(0, skyline, width, 30);
+    ctx.fillRect(0, height, width, -30);
   }
 }
 
@@ -285,7 +284,7 @@ class Renderer {
     this.clear();
 
     const height = this.height;
-    const skyline = this.height / 3;
+    const skyline = this.height * 2/ 3;
     const width = this.width;
     const {ctx, tempCtx} = this;
     const renderOptions = {height, width, skyline, ctx, tempCtx};
@@ -301,10 +300,14 @@ class Renderer {
     this.height = height;
     this.width = width;
 
+    this.ctx.canvas.style.height = (innerHeight) + 'px';
+    this.ctx.canvas.style.width = (innerWidth) + 'px';
     this.ctx.canvas.height = innerHeight * devicePixelRatio;
     this.ctx.canvas.width = innerWidth * devicePixelRatio;
     this.ctx.scale(devicePixelRatio, devicePixelRatio);
 
+    this.tempCtx.canvas.style.height = (innerHeight) + 'px';
+    this.tempCtx.canvas.style.width = (innerWidth) + 'px';
     this.tempCtx.canvas.height = innerHeight * devicePixelRatio;
     this.tempCtx.canvas.width = innerWidth * devicePixelRatio;
     this.tempCtx.scale(devicePixelRatio, devicePixelRatio);
@@ -342,10 +345,10 @@ class App {
   }
 }
 
-function initClouds(count) {
+function initClouds(count, ctx) {
   const clouds = [];
   while (count--) {
-    clouds.push(Cloud.generate());
+    clouds.push(Cloud.generate(ctx.canvas.width, ctx.canvas.height));
   }
   return clouds;
 }
@@ -363,7 +366,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tempCanvas = document.getElementById('tempCanvas');
 const tempCtx = tempCanvas.getContext('2d');
-const clouds = initClouds(10);
+const clouds = initClouds(10, ctx);
 const buildings = initBuildings(10, ctx);
 const sky = new Sky();
 const ground = new Ground();
