@@ -25,13 +25,13 @@ class RenderObject {
     if (this.tick >= this.getMaxTick()) this.tick = 0;
   }
 
-  preRender(ctx, width, height) {}
+  preRender({ctx, width, height}) {}
 
   /** @abstract */
-  render(ctx) {}
+  render({ctx}) {}
 
   /** @abstract */
-  reset() {}
+  reset(width, height) {}
 
   setRandomSeed() {
     this.seed = ~~(Math.random() * 15) + 1;
@@ -42,13 +42,13 @@ class RenderObject {
 }
 
 class Cloud extends RenderObject {
-  preRender(ctx, width, height) {
+  preRender({ctx, width, height}) {
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#fff';
     ctx.lineCap = 'round';
   }
 
-  render(ctx) {
+  render({ctx}) {
     ctx.lineWidth = this.size;
 
     const x = this.x;
@@ -62,15 +62,15 @@ class Cloud extends RenderObject {
     ctx.stroke();
   }
 
-  reset() {
-    this.xStep = this.xMax + this.size;
+  reset(width) {
+    this.x = width + this.size;
   }
 
-  update() {
+  update(width, height) {
     this.x -= this.speed;
 
-    if ((this.x + this.size) < 0) {
-      this.reset();
+    if ((this.x + this.size + 18) < 0) {
+      this.reset(width);
     }
     super.update();
   }
@@ -83,13 +83,13 @@ class Cloud extends RenderObject {
     const y = Math.random() * yMax / 2;
 
     const size = 10 + Math.random() * 10;
-    const speed = Math.random() * 2;
-    return new Cloud(~~(x), ~~y, ~~size, speed/3);
+    const speed = 1 + ~~(Math.random() * 2);
+    return new Cloud(~~(x), ~~y, ~~size, speed/4);
   }
 }
 
 class Building extends RenderObject {
-  preRender(ctx) {
+  preRender({ctx}) {
     ctx.fillStyle = '#666';
   }
 
@@ -145,9 +145,9 @@ class Building extends RenderObject {
     }
   }
 
-  render(ctx, width, height) {
+  render({ctx, width, height, skyline}) {
     const x = this.x;
-    const buildingBase = height / 3;
+    const buildingBase = skyline;
     const buildingWidth = 22.5;
 
     ctx.fillStyle = '#999';
@@ -222,7 +222,7 @@ class Sky extends RenderObject {
   getTime() {
     return ~~(this.getTick() / 100);
   }
-  render(ctx, width, height) {
+  render({ctx, width, height}) {
     ctx.fillStyle = this.getColor();
     ctx.beginPath();
     ctx.fillRect(0, 0, width, height / 3);
@@ -230,7 +230,7 @@ class Sky extends RenderObject {
 }
 
 class Lake extends RenderObject {
-  render(ctx, width, height, tempCtx) {
+  render({ctx, width, height, tempCtx, skyline}) {
     tempCtx.drawImage(ctx.canvas, 0, 0, width, height);
     ctx.save();
 
@@ -250,12 +250,11 @@ class Lake extends RenderObject {
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, height /3, width, height);
-
   }
 }
 
 class Ground extends RenderObject {
-  render(ctx, width, height) {
+  render({ctx, width, height}) {
     ctx.fillStyle = '#2d7229';
     ctx.beginPath();
     ctx.fillRect(0, height/3, width, 10);
@@ -281,10 +280,15 @@ class Renderer {
   draw(assets) {
     this.clear();
 
+    const height = this.height;
+    const skyline = this.height / 3;
+    const width = this.width;
+    const {ctx, tempCtx} = this;
+    const renderOptions = {height, width, skyline, ctx, tempCtx};
     assets.forEach((asset) => {
-      asset.update();
-      asset.preRender(this.ctx, this.width, this.height, this.tempCtx);
-      asset.render(this.ctx, this.width, this.height, this.tempCtx);
+      asset.update(renderOptions);
+      asset.preRender(renderOptions);
+      asset.render(renderOptions);
     });
   }
 
