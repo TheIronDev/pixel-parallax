@@ -295,7 +295,7 @@ class Renderer {
     });
   }
 
-  setDimensions(height, width, devicePixelRatio) {
+  setDimensions(height, width, devicePixelRatio = 1) {
 
     this.height = height;
     this.width = width;
