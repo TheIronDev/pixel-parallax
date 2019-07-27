@@ -33,8 +33,12 @@ class RenderObject {
   /** @abstract */
   reset(width, height) {}
 
-  setRandomSeed() {
-    this.seed = ~~(Math.random() * 15) + 1;
+  setRandomSeed(max = 15) {
+    this.seed = ~~(Math.random() * max) + 1;
+  }
+
+  setTick(tick) {
+    this.tick = tick;
   }
 
   /** @abstract */
@@ -364,6 +368,9 @@ const buildings = initBuildings(10, ctx);
 const sky = new Sky();
 const ground = new Ground();
 const lake = new Lake();
+
+// Forcefully set the time to 8am (otherwise it starts at midnight, too dark)
+sky.setTick(800);
 
 const assets = [sky, ...clouds, ...buildings, lake, ground];
 
