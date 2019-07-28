@@ -1,2 +1,3 @@
-# pixel-parallax
-Canvas mini project
+# Skyline
+
+Canvas mini project that renders a skyline
