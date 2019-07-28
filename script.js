@@ -143,16 +143,13 @@ class Building extends RenderObject {
       return;
     }
 
+    const openWindow = '#FFE9F0';
     const seed = this.seed;
-    for (let i = 0; i < this.size/5 - 1; i ++) {
-      ctx.fillStyle = (i+1)%seed === 0 ? 'transparent' : '#FFE9F0';
-      ctx.fillRect(x + 2.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      ctx.fillStyle = (i + 2)%seed === 0 ? 'transparent' : '#FFE9F0';
-      ctx.fillRect(x + 7.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      ctx.fillStyle = (i + 3)%seed === 0 ? 'transparent' : '#FFE9F0';
-      ctx.fillRect(x + 12.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
-      ctx.fillStyle = (i + 4)%seed === 0 ? 'transparent' : '#FFE9F0';
-      ctx.fillRect(x + 17.5, buildingBase - 2.5 - (i * 5), 2.5, -2.5);
+    for (let row = 0; row < this.size/5 - 1; row ++) {
+      for (let col = 0; col < 4; col++) {
+        ctx.fillStyle = (row + col + 1)%seed === 0 ? 'transparent' : openWindow;
+        ctx.fillRect(x + 2.5 + (col * 5), buildingBase - 2.5 - (row * 5), 2.5, -2.5);
+      }
     }
   }
 
