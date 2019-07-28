@@ -53,17 +53,25 @@ class Cloud extends RenderObject {
   }
 
   render({ctx}) {
-    ctx.lineWidth = this.size;
-
     const x = this.x;
     const y = this.y;
+    ctx.lineWidth = this.size;
+
+    ctx.save(x, y - this.size/2, 20, -this.size);
+
+    ctx.rect(x - 10, y, 40, -this.size);
+    ctx.clip();
+
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x + 18, y);
 
-    ctx.moveTo(x + 5, y - this.size/2);
-    ctx.lineTo(x + 9, y - this.size/2);
+    ctx.moveTo(x + 5, y - this.size/3);
+    ctx.lineTo(x + 9, y - this.size/3);
     ctx.stroke();
+
+
+    ctx.restore();
   }
 
   reset({ctx, width, height}) {
@@ -188,7 +196,7 @@ class Building extends RenderObject {
   }
 }
 Building.BUILDING_WIDTH = 22.5;
-Building.BUILDING_SPACE = Building.BUILDING_WIDTH - 2.5;
+Building.BUILDING_SPACE = Building.BUILDING_WIDTH - 1;
 Building.MAX_SEED = 35;
 
 class Sky extends RenderObject {
@@ -373,7 +381,7 @@ function initClouds(count, ctx) {
 
 function initBuildings(totalWidth) {
   const buildings = [];
-  const count = totalWidth / Building.BUILDING_SPACE;
+  const count = ~~(totalWidth / Building.BUILDING_SPACE);
   for (let i = 0; i <= count/2; i++) {
     buildings.push(Building.generate(i));
     if (i !== count -i) buildings.push(Building.generate(count - i, ctx.canvas.width));
