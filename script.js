@@ -20,7 +20,7 @@ class RenderObject {
     return 100;
   }
 
-  update() {
+  update(renderConfig) {
     this.tick++;
     if (this.tick >= this.getMaxTick()) this.tick = 0;
   }
@@ -66,24 +66,24 @@ class Cloud extends RenderObject {
     ctx.stroke();
   }
 
-  reset(width) {
+  reset({ctx, width, height}) {
     this.x = width + this.size;
   }
 
-  update(width, height) {
+  update(renderConfig) {
     this.x -= this.speed;
 
     if ((this.x + this.size + 18) < 0) {
-      this.reset(width);
+      this.reset(renderConfig);
     }
-    super.update();
+    super.update(renderConfig);
   }
 
   static generate(width, height) {
-    const xMax = width * 2;
+    const xMax = width;
     const x = ~~(Math.random() * xMax);
 
-    const y = Math.random() * height;
+    const y = Math.random() * height / 3;
 
     const size = 10 + Math.random() * 10;
     const speed = 1 + ~~(Math.random() * 2);
@@ -177,8 +177,8 @@ class Building extends RenderObject {
     this.seed = ~~(Math.random() * 15) + 20;
   }
 
-  static generate(index, width) {
-    const x = this.BUILDING_WIDTH * index;
+  static generate(index) {
+    const x = this.BUILDING_SPACE * index;
 
     const yMax = 100;
     const y = Math.random() * yMax/2;
@@ -188,6 +188,8 @@ class Building extends RenderObject {
   }
 }
 Building.BUILDING_WIDTH = 22.5;
+Building.BUILDING_SPACE = Building.BUILDING_WIDTH - 2.5;
+Building.MAX_SEED = 35;
 
 class Sky extends RenderObject {
   getColor() {
@@ -265,8 +267,6 @@ class Ground extends RenderObject {
   }
 }
 
-Building.MAX_SEED = 35;
-
 class Renderer {
   constructor(ctx, tempCtx) {
     this.ctx = ctx;
@@ -315,10 +315,10 @@ class Renderer {
 }
 
 class App {
-  constructor(window, renderer, assets) {
+  constructor(window, renderer) {
     this.window = window;
     this.renderer = renderer;
-    this.assets = assets;
+    this.assets = [];
 
     this.height = 0;
     this.width = 0;
@@ -335,12 +335,30 @@ class App {
 
   resize() {
     const {innerHeight, innerWidth, devicePixelRatio} = this.window;
+    this.height = innerHeight;
+    this.width = innerWidth;
     this.renderer.setDimensions(innerHeight, innerWidth, devicePixelRatio);
+  }
+
+  setDefaultAssets() {
+
+    const clouds = initClouds(10, ctx);
+    const buildings = initBuildings(window.innerWidth);
+    const sky = new Sky();
+    const ground = new Ground();
+    const lake = new Lake();
+
+    // Forcefully set the time to 8am (otherwise it starts at midnight, too dark)
+    sky.setTick(800);
+
+    const assets = [sky, ...clouds, ...buildings, lake, ground];
+    this.assets = assets;
   }
 
   start() {
     this.resize();
     this.window.addEventListener('resize', () => this.resize());
+    this.setDefaultAssets();
     this.renderLoop();
   }
 }
@@ -353,8 +371,9 @@ function initClouds(count, ctx) {
   return clouds;
 }
 
-function initBuildings(count, ctx) {
+function initBuildings(totalWidth) {
   const buildings = [];
+  const count = totalWidth / Building.BUILDING_SPACE;
   for (let i = 0; i <= count/2; i++) {
     buildings.push(Building.generate(i));
     if (i !== count -i) buildings.push(Building.generate(count - i, ctx.canvas.width));
@@ -366,21 +385,10 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tempCanvas = document.getElementById('tempCanvas');
 const tempCtx = tempCanvas.getContext('2d');
-const clouds = initClouds(10, ctx);
-const buildings = initBuildings(10, ctx);
-const sky = new Sky();
-const ground = new Ground();
-const lake = new Lake();
-
-// Forcefully set the time to 8am (otherwise it starts at midnight, too dark)
-sky.setTick(800);
-
-const assets = [sky, ...clouds, ...buildings, lake, ground];
-
 const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
-const app = new App(window, renderr, assets);
+const app = new App(window, renderr);
 
 // Start the render loop
 app.start();
