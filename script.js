@@ -122,19 +122,33 @@ class Building extends RenderObject {
     const x = this.x;
 
     ctx.beginPath();
+    // Building side base
     ctx.fillRect(x, buildingBase, buildingWidth, this.size * -1);
 
-    // top
-    ctx.fillRect(x + 2.5, buildingBase - this.size, buildingWidth -5, -3);
-
-    // tippy top
-    ctx.fillRect(x + 5, buildingBase - this.size, buildingWidth -10, -6);
-
-    ctx.arc(x + buildingWidth/2, buildingBase - this.size - 5, 5, 0, Math.PI * 2);
     if (this.size > 100) {
+      // top
+      ctx.fillRect(x + 2.5, buildingBase - this.size, buildingWidth -5, -3);
+
+      // tippy top
+      ctx.fillRect(x + 5, buildingBase - this.size, buildingWidth -10, -6);
+
       ctx.fillRect(x + buildingWidth/2 - 2, buildingBase - this.size, 4, -15);
     } else if (this.size > 50) {
+      // top
+      ctx.fillRect(x + 2.5, buildingBase - this.size, buildingWidth -5, -3);
+
+      // tippy top
+      ctx.fillRect(x + 5, buildingBase - this.size, buildingWidth -10, -6);
+
       ctx.arc(x + buildingWidth/2, buildingBase - this.size - 5, 5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+
+      ctx.beginPath();
+      ctx.moveTo(x, buildingBase - this.size);
+      ctx.lineTo(x + buildingWidth/2, buildingBase - this.size - 10);
+      ctx.lineTo(x + buildingWidth, buildingBase - this.size);
+      ctx.closePath();
       ctx.fill();
     }
   }
@@ -149,6 +163,8 @@ class Building extends RenderObject {
         ctx.fillStyle = '#333';
         ctx.fillRect(x, buildingBase - 2.5 - (i * 5), buildingWidth, -2.5);
       }
+      ctx.fillRect(x + 2.5, buildingBase - this.size, buildingWidth - 5, -1.5);
+      ctx.fillRect(x + 5, buildingBase - this.size - 3, buildingWidth - 10, -1.5);
       if (this.size > 150) {
         ctx.fillStyle = '#1b96ff';
         ctx.fillRect(x + 2.5, buildingBase - this.size + 5, 10, 10);
@@ -181,11 +197,11 @@ class Building extends RenderObject {
 
     // Section off the right side of the building
     ctx.beginPath();
-    ctx.rect(x + buildingWidth * 2/3, buildingBase, buildingWidth, this.size * -2);
+    ctx.rect(x + buildingWidth * 7/10, buildingBase, buildingWidth, this.size * -2);
     ctx.clip();
     ctx.fillStyle = '#666';
 
-    // Draw the entire building structure
+    // Draw the entire building structure again, but this time its clipped to the right
     this.renderBuildingSide(ctx, buildingBase, buildingWidth, width);
     ctx.restore();
 
