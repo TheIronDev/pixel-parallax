@@ -1,3 +1,21 @@
+const MAX_CLOCK_TIME = 2400;
+
+class Clock {
+  constructor(tick = 0) {
+    this.tick = tick;
+  }
+  getTick() {
+    return this.tick % MAX_CLOCK_TIME;
+  }
+  getTime() {
+    return ~~(this.getTick() / 100);
+  }
+  update() {
+    this.tick++;
+    if (this.tick >= MAX_CLOCK_TIME) this.tick = 0;
+  }
+}
+const clock = new Clock(800);
 
 class RenderObject {
   /**
@@ -16,14 +34,7 @@ class RenderObject {
     this.setRandomSeed();
   }
 
-  getMaxTick() {
-    return 100;
-  }
-
-  update(renderConfig) {
-    this.tick++;
-    if (this.tick >= this.getMaxTick()) this.tick = 0;
-  }
+  update(renderConfig) {}
 
   preRender({ctx, width, height}) {}
 
@@ -44,6 +55,9 @@ class RenderObject {
   /** @abstract */
   static generate() {}
 }
+
+// Lets have all Renderable objects share the same clock instance
+RenderObject.prototype.clock = clock;
 
 class Cloud extends RenderObject {
   preRender({ctx, width, height}) {
@@ -223,14 +237,11 @@ class Sky extends RenderObject {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  getMaxTick() {
-    return 2400;
-  }
   getTick() {
-    return this.tick % 2400;
+    return this.clock.getTick();
   }
   getTime() {
-    return ~~(this.getTick() / 100);
+    return this.clock.getTime();
   }
   render({ctx, width, height, skyline}) {
     ctx.fillStyle = this.getColor();
@@ -320,13 +331,15 @@ class Renderer {
 }
 
 class App {
-  constructor(window, renderer) {
+  constructor(window, renderer, clock) {
     this.window = window;
     this.renderer = renderer;
     this.assets = [];
+    this.clock = clock;
 
     this.height = 0;
     this.width = 0;
+    this.loop_ = null;
   }
 
   draw() {
@@ -334,7 +347,8 @@ class App {
   }
 
   renderLoop() {
-    this.window.requestAnimationFrame(() => this.renderLoop());
+    if (this.window.document.hidden) return;
+    this.clock.update();
     this.draw();
   }
 
@@ -364,7 +378,15 @@ class App {
     this.resize();
     this.window.addEventListener('resize', () => this.resize());
     this.setDefaultAssets();
-    this.renderLoop();
+    this.startRenderLoop();
+  }
+
+  startRenderLoop() {
+    this.loop_ = this.window.setInterval(() => this.renderLoop(), 30);
+  }
+
+  stopRenderLoop() {
+    this.window.clearInterval(this.loop_);
   }
 }
 
@@ -393,7 +415,7 @@ const tempCtx = tempCanvas.getContext('2d');
 const renderr = new Renderer(ctx, tempCtx);
 
 // Create our "app"
-const app = new App(window, renderr);
+const app = new App(window, renderr, clock);
 
 // Start the render loop
 app.start();
