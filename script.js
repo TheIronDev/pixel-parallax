@@ -71,7 +71,7 @@ class Cloud extends RenderObject {
     const y = this.y;
     ctx.lineWidth = this.size;
 
-    ctx.save(x, y - this.size/2, 20, -this.size);
+    ctx.save();
 
     ctx.rect(x - 10, y, 40, -this.size);
     ctx.clip();
@@ -278,7 +278,7 @@ class Lake extends RenderObject {
 
     ctx.fillStyle = 'rgba(0,0,255,.4)';
 
-    var gradient = ctx.createLinearGradient(0, skyline, 0, height);
+    const gradient = ctx.createLinearGradient(0, skyline, 0, height);
 
     gradient.addColorStop(0, 'rgba(0,0,255,.4)');
     gradient.addColorStop(.5, 'rgba(200,200,255,.8)');
@@ -292,10 +292,48 @@ class Lake extends RenderObject {
 
 class Ground extends RenderObject {
   render({ctx, width, height, skyline}) {
-    ctx.fillStyle = '#2d7229';
+    ctx.fillStyle = '#90B16B';
     ctx.beginPath();
     ctx.fillRect(0, skyline, width, 30);
     ctx.fillRect(0, height, width, -30);
+  }
+}
+
+class Mountain extends RenderObject {
+  render({ctx, skyline}) {
+    const width = ctx.canvas.width / 2;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#57856e';
+
+
+    const gradient = ctx.createLinearGradient(this.x - width, skyline, width, skyline);
+
+    gradient.addColorStop(0, '#21332a');
+    gradient.addColorStop(1, '#84CBA8');
+
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+    ctx.moveTo(this.x - width, skyline);
+    ctx.quadraticCurveTo(this.x - this.size, skyline - this.size, this.x, skyline - this.size);
+    ctx.quadraticCurveTo(this.x + this.size, skyline - this.size, this.x + width, skyline);
+
+    ctx.stroke();
+    ctx.fill();
+  }
+  static generate(ctx) {
+    const x = ~~(Math.random() * ctx.canvas.width);
+
+    const yMax = 100;
+    const y = Math.random() * yMax/2;
+
+    const size = 100 + ~~(Math.random() * 50);
+    return new Mountain(~~(x), ~~y, ~~size, 0);
+
   }
 }
 
@@ -377,7 +415,9 @@ class App {
 
   setDefaultAssets() {
 
-    const clouds = initClouds(10, ctx);
+    const backClouds = initClouds(5, ctx);
+    const frontClouds = initClouds(5, ctx);
+    const mountains = initMountains(5, ctx);
     const buildings = initBuildings(window.innerWidth);
     const sky = new Sky();
     const ground = new Ground();
@@ -386,7 +426,7 @@ class App {
     // Forcefully set the time to 8am (otherwise it starts at midnight, too dark)
     sky.setTick(800);
 
-    const assets = [sky, ...clouds, ...buildings, lake, ground];
+    const assets = [sky, ...mountains, ...backClouds, ...buildings, ...frontClouds, lake, ground];
     this.assets = assets;
   }
 
@@ -412,6 +452,14 @@ function initClouds(count, ctx) {
     clouds.push(Cloud.generate(ctx.canvas.width, ctx.canvas.height));
   }
   return clouds;
+}
+
+function initMountains(count, ctx) {
+  const mountains = [];
+  while (count--) {
+    mountains.push(Mountain.generate(ctx));
+  }
+  return mountains;
 }
 
 function initBuildings(totalWidth) {
